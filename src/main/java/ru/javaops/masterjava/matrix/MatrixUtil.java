@@ -14,7 +14,9 @@ public class MatrixUtil {
     public static int[][] concurrentMultiply(int[][] matrixA, int[][] matrixB, ExecutorService executor) throws InterruptedException, ExecutionException {
         final int matrixSize = matrixA.length;
         final int[][] matrixC = new int[matrixSize][matrixSize];
-
+            for (int i = 0; i < 10; i++){
+                System.out.println(i);
+            }
         return matrixC;
     }
 
