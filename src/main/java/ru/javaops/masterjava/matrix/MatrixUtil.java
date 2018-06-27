@@ -1,7 +1,9 @@
 package ru.javaops.masterjava.matrix;
 
 import java.util.Random;
+import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -14,24 +16,68 @@ public class MatrixUtil {
     public static int[][] concurrentMultiply(int[][] matrixA, int[][] matrixB, ExecutorService executor) throws InterruptedException, ExecutionException {
         final int matrixSize = matrixA.length;
         final int[][] matrixC = new int[matrixSize][matrixSize];
-            for (int i = 0; i < 10; i++){
-                System.out.println(i);
+
+        class ColumnMultipleResult {
+            //hello
+
+            private final int col;
+            private final int[] columnC;
+
+            public ColumnMultipleResult(int col, int[] columnC) {
+                this.col = col;
+                this.columnC = columnC;
             }
+        }
+
+        final CompletionService<ColumnMultipleResult> completionService = new ExecutorCompletionService<>(executor);
+
+        for (int j = 0; j < matrixSize; j++) {
+            final int col = j;
+            final int[] columnB = new int[matrixSize];
+            for (int k = 0; k < matrixSize; k++) {
+                columnB[k] = matrixB[k][col];
+            }
+            completionService.submit(() -> {
+                final int[] columbC = new int[matrixSize];
+
+                for (int row = 0; row < matrixSize; row++) {
+                    final int[] rowA = matrixA[row];
+                    int sum = 0;
+                    for (int k = 0; k < matrixSize; k++) {
+                        sum += rowA[k] * columnB[k];
+                    }
+
+                    columbC[row] = sum;
+                }
+                return new ColumnMultipleResult(col, columbC);
+            });
+        }
+        for (int i = 0; i < matrixSize; i++) {
+            ColumnMultipleResult res = completionService.take().get();
+            for (int k = 0; k < matrixSize; k++) {
+                matrixC[k][res.col] = res.columnC[k];
+            }
+        }
         return matrixC;
     }
-
     // TODO optimize by https://habrahabr.ru/post/114797/
     public static int[][] singleThreadMultiply(int[][] matrixA, int[][] matrixB) {
         final int matrixSize = matrixA.length;
         final int[][] matrixC = new int[matrixSize][matrixSize];
 
-        for (int i = 0; i < matrixSize; i++) {
-            for (int j = 0; j < matrixSize; j++) {
+        for (int col = 0; col < matrixSize; col++) {
+            final int[] columnB = new int[matrixSize];
+            for (int k = 0; k < matrixSize; k++){
+                columnB[k] = matrixB[k][col];
+            }
+
+            for (int row = 0; row < matrixSize; row++) {
                 int sum = 0;
+                final int[] rowA = matrixA[row];
                 for (int k = 0; k < matrixSize; k++) {
-                    sum += matrixA[i][k] * matrixB[k][j];
+                    sum += rowA[k] * columnB [k];
                 }
-                matrixC[i][j] = sum;
+                matrixC[row][col] = sum;
             }
         }
         return matrixC;
